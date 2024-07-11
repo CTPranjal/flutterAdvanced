@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'local_notification.dart';
 import 'package:clevertap_plugin/clevertap_plugin.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+
 import 'package:firebase/local_notification.dart';
 
 @pragma('vm:entry-point')
@@ -39,6 +42,8 @@ Future<void> main() async {
   NotificationService().init();
   runApp(MyApp(state: ApplicationState()));
   CleverTapPlugin.setDebugLevel(3);
+
+
 }
 
 class MyApp extends StatefulWidget {
@@ -53,10 +58,22 @@ class _MyAppState extends State<MyApp> {
   void initState(){
     activateCleverTapFlutterPluginHandlers();
     super.initState();
+      CleverTapPlugin.setDebugLevel(3);
   }
   void activateCleverTapFlutterPluginHandlers() {
     //Handler for receiving Push Clicked Payload in FG and BG state
+    // CleverTapPlugin().setCleverTapInAppNotificationButtonClickedHandler((map) {
+    //   if (map != null) {
+    //     inAppNotificationButtonClicked(map);
+    //   }
+    // });
+    CleverTapPlugin().setCleverTapDisplayUnitsLoadedHandler(onDisplayUnitsLoaded);
     CleverTapPlugin().setCleverTapPushClickedPayloadReceivedHandler(pushClickedPayloadReceived);
+  }
+  void inAppNotificationButtonClicked(Map<String, dynamic> map) {
+    this.setState(() {
+      print("inAppNotificationButtonClicked called = ${map.toString()}");
+    });
   }
 //For Push Notification Clicked Payload in FG and BG state
   void pushClickedPayloadReceived(Map<String, dynamic> map) {
@@ -64,6 +81,14 @@ class _MyAppState extends State<MyApp> {
     CleverTapPlugin.createNotification(map);
     print("pushClickedPayloadReceived called with notification payload: " + map.toString());
   }
+
+  void onDisplayUnitsLoaded(List<dynamic>? displayUnits) {
+    void onDisplayUnitsLoaded(List<dynamic>? displayUnits) {
+      this.setState(() {
+        print("Display Units = " + displayUnits.toString());
+      });
+  }
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -83,6 +108,8 @@ class MyHomePage extends StatefulWidget {
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
+
+
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -90,33 +117,22 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+     //CleverTapPlugin.init("CLEVERTAP_ACCOUNT_ID", "CLEVERTAP_REGION", "CLEVERTAP_TARGET_DOMAIN");
+
     CleverTapPlugin.setDebugLevel(3);
     initPlatformState();
-    // activateCleverTapFlutterPluginHandlers();
+    //activateCleverTapFlutterPluginHandlers();
     CleverTapPlugin.createNotificationChannel(
         "P01", "Test Notification Flutter", "Flutter Test", 5, true);
+  }
+
+  void CtNative() {
+    CleverTapPlugin.recordEvent("PC Native Display Event",{});
   }
 
   Future<void> initPlatformState() async {
     if (!mounted) return;
   }
-
-  // void activateCleverTapFlutterPluginHandlers() {
-  //   _clevertapPlugin = CleverTapPlugin();
-  //   //Handler for receiving Push Clicked Payload in FG and BG state
-  //   _clevertapPlugin.setCleverTapPushClickedPayloadReceivedHandler(pushClickedPayloadReceived);
-  // }
-  // //For Push Notification Clicked Payload in FG and BG state
-  // void pushClickedPayloadReceived(Map<String, dynamic> map) {
-  //   debugPrint("pushClickedPayloadReceived called");
-  //   CleverTapPlugin.createNotification(map);
-  //   print("pushClickedPayloadReceived called with notification payload: " + map.toString());
-  //
-  //   // this.setState(() async {
-  //   //   var data = jsonEncode(map);
-  //   //   debugPrint("on Push Click Payload = $data");
-  //   // });
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +162,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     ElevatedButton(
                       onPressed: () => widget.state.subscribeToPush('push'),
                       child: const Text('Send Notification'),
+                    ),
+                    ElevatedButton(
+                      onPressed: CtNative,
+                      child: Text(
+                        "Native Display",
+                        style: TextStyle(fontSize: 20),
+                      ),
                     ),
                   ],
                 ),
@@ -221,6 +244,29 @@ class ApplicationState extends ChangeNotifier {
     FirebaseMessaging.onMessage.listen((remoteMessage) async {
       renderNotification(remoteMessage);
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((remoteMessage){
+      print('hello');
+      handleNotificationRedirection(remoteMessage);
+    });
+  }
+
+  handleNotificationRedirection(RemoteMessage remoteMessage) {
+    try {
+      print("RemoteMessage1: ${remoteMessage.data}");
+      //var notificationData = NotificationData.fromJson(remoteMessage.data);
+      // if (notificationData.notificationType == "deeplink") {
+      //   DeeplinkNavData deeplinkNavData = DeeplinkNavData(
+      //   notificationType: notificationData.notificationType,
+      //   screenData: notificationData.screenData,
+      //   screenName: notificationData.screenName);
+      //   serviceLocator<NavigationService>().doNavigation(deeplinkNavData);
+      // } else {}
+    } catch (e, st) {
+      if (true) {
+        print("error: $e\n$st == ${remoteMessage.data}");
+      }
+    }
   }
 
   Future<void> requestMessagingPermission() async {
@@ -263,8 +309,8 @@ class ApplicationState extends ChangeNotifier {
   }
 
   Future<void> subscribeToPush(String topic) async {
-    // await firebaseMessaging.subscribeToPush(topic);
+    //await firebaseMessaging.subscribeToPush(topic);
     CleverTapPlugin.recordEvent("flutterTest",{});
-
   }
+
 }
